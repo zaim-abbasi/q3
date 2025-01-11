@@ -10,10 +10,15 @@ const useDashboardStore = create(
         courses: coursesData,
         notifications: announcements,
         selectedCourse: null,
+        lastVisitedCourse: null,
+        unreadNotifications: announcements.filter(n => !n.isRead).length,
         
         // Course actions
         setSelectedCourse: (courseId) => 
-          set({ selectedCourse: courseId }),
+          set(state => ({
+            selectedCourse: courseId,
+            lastVisitedCourse: courseId
+          })),
         
         getCourseById: (courseId) => 
           get().courses.find(course => course.id === courseId),
@@ -42,20 +47,24 @@ const useDashboardStore = create(
           const course = get().getCourseById(courseId);
           return course ? course.progress : 0;
         },
+
+        // Calculate course progress based on completed assignments
+        calculateCourseProgress: (courseId) => {
+          const course = get().getCourseById(courseId);
+          if (!course) return 0;
+          
+          const totalAssignments = course.assignments.length;
+          const completedAssignments = course.assignments.filter(
+            a => a.status === 'completed'
+          ).length;
+          
+          return Math.round((completedAssignments / totalAssignments) * 100);
+        },
         
-        // Update methods
-        updateCourseProgress: (courseId, progress) =>
-          set(state => ({
-            courses: state.courses.map(course =>
-              course.id === courseId
-                ? { ...course, progress }
-                : course
-            )
-          })),
-        
+        // Update assignment status and recalculate progress
         updateAssignmentStatus: (courseId, assignmentId, status) =>
-          set(state => ({
-            courses: state.courses.map(course =>
+          set(state => {
+            const updatedCourses = state.courses.map(course =>
               course.id === courseId
                 ? {
                     ...course,
@@ -66,11 +75,55 @@ const useDashboardStore = create(
                     )
                   }
                 : course
-            )
+            );
+
+            // Recalculate course progress
+            const updatedProgress = Math.round(
+              (updatedCourses
+                .find(c => c.id === courseId)
+                ?.assignments.filter(a => a.status === 'completed').length || 0) /
+              (updatedCourses.find(c => c.id === courseId)?.assignments.length || 1) *
+              100
+            );
+
+            return {
+              courses: updatedCourses.map(course =>
+                course.id === courseId
+                  ? { ...course, progress: updatedProgress }
+                  : course
+              )
+            };
+          }),
+
+        // Notification management
+        addNotification: (notification) =>
+          set(state => ({
+            notifications: [notification, ...state.notifications],
+            unreadNotifications: state.unreadNotifications + 1
+          })),
+
+        markNotificationAsRead: (notificationId) =>
+          set(state => ({
+            notifications: state.notifications.map(notification =>
+              notification.id === notificationId
+                ? { ...notification, isRead: true }
+                : notification
+            ),
+            unreadNotifications: state.unreadNotifications - 1
+          })),
+
+        markAllNotificationsAsRead: () =>
+          set(state => ({
+            notifications: state.notifications.map(notification => ({
+              ...notification,
+              isRead: true
+            })),
+            unreadNotifications: 0
           }))
       }),
       {
-        name: 'dashboard-storage'
+        name: 'dashboard-storage',
+        version: 1
       }
     )
   )

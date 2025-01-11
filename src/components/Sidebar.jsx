@@ -1,9 +1,11 @@
-import { Box, VStack, Link, Text, Icon } from '@chakra-ui/react';
+import { Box, VStack, Link, Text, Icon, Badge } from '@chakra-ui/react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
-import { FaHome, FaBook, FaTasks, FaChartLine, FaUser } from 'react-icons/fa';
+import { FaHome, FaBook, FaTasks, FaChartLine, FaUser, FaBell } from 'react-icons/fa';
+import useDashboardStore from '../store/dashboardStore';
 
 const Sidebar = () => {
   const location = useLocation();
+  const unreadNotifications = useDashboardStore(state => state.unreadNotifications);
 
   const menuItems = [
     { icon: FaHome, text: 'Dashboard', path: '/' },
@@ -42,6 +44,16 @@ const Sidebar = () => {
           >
             <Icon as={item.icon} fontSize="20px" />
             <Text ml="4" fontWeight="medium">{item.text}</Text>
+            {item.text === 'Dashboard' && unreadNotifications > 0 && (
+              <Badge
+                ml="auto"
+                colorScheme="red"
+                borderRadius="full"
+                px="2"
+              >
+                {unreadNotifications}
+              </Badge>
+            )}
           </Link>
         ))}
       </VStack>
